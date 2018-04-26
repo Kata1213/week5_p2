@@ -1,118 +1,104 @@
 package tw.controllers;
 
-import org.junit.After;
 import org.junit.Before;
-import org.junit.jupiter.api.Test;
-import tw.commands.InputCommand;
-import tw.core.Answer;
-import tw.core.Game;
-import tw.core.model.GuessResult;
-import tw.views.GameView;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import tw.core.exception.OutOfRangeAnswerException;
+import tw.core.generator.AnswerGenerator;
+import tw.core.generator.RandomIntGenerator;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.hamcrest.core.Is.is;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static tw.core.GameStatus.FAIL;
-import static tw.core.GameStatus.SUCCESS;
 
 /**
  * 在GameControllerTest文件中完成GameController中对应的单元测试
  */
 public class GameControllerTest {
-    private GameController gameController;
-    private ByteArrayOutputStream outContent;
-    private Game game;
-    private InputCommand inputCommand;
+    private RandomIntGenerator randomIntGenerator;
+    private AnswerGenerator answerGenerator;
+
+    @Rule
+    public ExpectedException expectedException = ExpectedException.none();
 
     @Before
     public void setUp() throws Exception {
-        game = mock(Game.class);
-        inputCommand = mock(InputCommand.class);
-
-        gameController = new GameController(game, new GameView());
-
-        outContent = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(outContent));
-    }
-
-    private String systemOut() {
-        return outContent.toString();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        outContent.close();
+        randomIntGenerator = mock(RandomIntGenerator.class);
+        answerGenerator = new AnswerGenerator(randomIntGenerator);
     }
 
     @Test
-    public void test_begin_game_should_return_instructions() throws IOException {
+    public void test_should_return_an_given_random_answer() throws OutOfRangeAnswerException {
         //Given
-        String expcet = "------Guess Number Game, You have 6 chances to guess!  ------\n";
-        gameController.beginGame();
-
-        //Then
-        assertThat(systemOut(), is(expcet));
-    }
-
-    @Test
-    public void test_should_system_out_fail_when_game_status_is_fail() throws IOException {
-        //Given
-        String status = FAIL;
-        String expect = "Game Status: " + status + "\n";
-
+        String expectAnswer = "1 2 3 4";
 
         //When
-        when(game.checkStatus()).thenReturn(status);
-        gameController.play(inputCommand);
+        when(randomIntGenerator.generateNums(10, 4)).thenReturn(expectAnswer);
 
         //Then
-        assertThat(systemOut(), is(expect));
+        assertThat(answerGenerator.generate().toString(), is(expectAnswer));
 
     }
 
     @Test
-    public void test_should_system_out_success_when_game_status_is_success() throws IOException {
+    public void test_should_return_an_NumberFormatException_when_give_wrong_digit() throws OutOfRangeAnswerException {
         //Given
-        String status = SUCCESS;
-        String expect = "Game Status: " + status + "\n";
+        String wrongDigit = "a";
+        String expectAnswer = "1 2 3 a";
 
         //When
-        when(game.checkStatus()).thenReturn(status);
-        gameController.play(inputCommand);
+        when(randomIntGenerator.generateNums(10, 4)).thenReturn(expectAnswer);
 
         //Then
-        assertThat(systemOut(), is(expect));
+        expectedException.expect(NumberFormatException.class);
+        expectedException.expectMessage("For input string: \"" + wrongDigit + "\"");
+        answerGenerator.generate();
 
     }
 
     @Test
-    public void test_should_system_out_instruction_when_input_answer() throws IOException {
+    public void test_should_return_an_OutOfRangeAnswerException_when_give_repeat_digit() throws OutOfRangeAnswerException {
         //Given
-        Answer answer = Answer.createAnswer("1 2 3 4");
-        String expect = "Guess Result: 1A0B\n"
-                + "Guess History:\n"
-                + "[Guess Numbers: 1 2 3 4, Guess Result: 1A0B]\n"
-                + "Game Status: fail\n";
-        GuessResult guessResult = new GuessResult("1A0B",answer);
-        List<GuessResult> guessResults = new ArrayList<>();
-        guessResults.add(guessResult);
+        String expectAnswer = "1 2 3 3";
 
         //When
-        when(game.checkCoutinue()).thenReturn(true).thenReturn(false);
-        when(game.checkStatus()).thenReturn(FAIL);
-        when(inputCommand.input()).thenReturn(answer);
-        when(game.guess(answer)).thenReturn(guessResult);
-        when(game.guessHistory()).thenReturn(guessResults);
-        gameController.play(inputCommand);
+        when(randomIntGenerator.generateNums(10, 4)).thenReturn(expectAnswer);
 
         //Then
-        assertThat(systemOut(), is(expect));
+        expectedException.expect(OutOfRangeAnswerException.class);
+        expectedException.expectMessage("Answer format is incorrect");
+        answerGenerator.generate();
+
+    }
+
+    @Test
+    public void test_should_return_an_OutOfRangeAnswerException_when_give_digit_greater_than_9() throws OutOfRangeAnswerException {
+        //Given
+        String expectAnswer = "1 2 3 10";
+
+        //When
+        when(randomIntGenerator.generateNums(10, 4)).thenReturn(expectAnswer);
+
+        //Then
+        expectedException.expect(OutOfRangeAnswerException.class);
+        expectedException.expectMessage("Answer format is incorrect");
+        answerGenerator.generate();
+
+    }
+
+    @Test
+    public void test_should_return_an_OutOfRangeAnswerException_when_give_digit_without_trim() throws OutOfRangeAnswerException {
+        //Given
+        String expectAnswer = "1 2 34";
+
+        //When
+        when(randomIntGenerator.generateNums(10, 4)).thenReturn(expectAnswer);
+
+        //Then
+        expectedException.expect(OutOfRangeAnswerException.class);
+        expectedException.expectMessage("Answer format is incorrect");
+        answerGenerator.generate();
     }
 }
