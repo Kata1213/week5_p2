@@ -16,7 +16,7 @@ public class AnswerGenerator {
     }
 
     public Answer generate() throws OutOfRangeAnswerException {
-        String RandomNumStr = this.randomIntGenerator.generateNums(9, 4);
+        String RandomNumStr = this.randomIntGenerator.generateNums(10, 4);
         Answer answer = Answer.createAnswer(RandomNumStr);
         answer.validate();
         return answer;
